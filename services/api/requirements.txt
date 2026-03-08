@@ -1,0 +1,9 @@
+﻿fastapi
+uvicorn
+requests
+pydantic
+chromadb
+pypdf
+sentence-transformers
+langchain-community
+langchain-text-splitters

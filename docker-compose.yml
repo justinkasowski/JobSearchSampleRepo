@@ -1,0 +1,54 @@
+﻿services:
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    restart: unless-stopped
+    environment:
+      - OLLAMA_KEEP_ALIVE=30m
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+
+  api:
+    build: ./services/api
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    depends_on:
+      - ollama
+    volumes:
+      - ./data:/data
+      - ./services/api:/app
+    environment:
+      - OLLAMA_MODEL=llama3.2:3b
+      - OLLAMA_KEEP_ALIVE=30m
+      - EMBED_MODEL_NAME=sentence-transformers/all-MiniLM-L6-v2
+
+      - SLACK_WEBHOOK_POLICY=https://hooks.slack.com/services/...
+      - SLACK_WEBHOOK_HR=https://hooks.slack.com/services/...
+      - SLACK_WEBHOOK_SALES=https://hooks.slack.com/services/...
+
+      - DISCORD_WEBHOOK_POLICY=https://discordapp.com/api/webhooks/...
+      - DISCORD_WEBHOOK_HR=https://discordapp.com/api/webhooks/...
+      - DISCORD_WEBHOOK_SALES=https://discordapp.com/api/webhooks/...
+
+  ollama-init:
+    image: ollama/ollama:latest
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_KEEP_ALIVE=30m
+    entrypoint: sh -c "until ollama list; do sleep 2; done; ollama pull llama3.2:3b"
+    volumes:
+      - ollama_models:/root/.ollama
+
+volumes:
+  ollama_models:
