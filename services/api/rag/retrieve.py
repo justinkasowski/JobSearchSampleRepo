@@ -3,13 +3,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 
-from config import (
-    AVAILABLE_CORPORA,
-    MODEL,
-    OLLAMA_URL,
-    RAG_PROMPT,
-)
-from integrations.integrationsHandler import get_message_plan_schema
+from config import AVAILABLE_CORPORA, MODEL, OLLAMA_URL, RAG_PROMPT
+
 from .rag_store import get_vector_store
 
 

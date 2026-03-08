@@ -18,7 +18,7 @@ from pydantic import BaseModel
 
 
 from config import AVAILABLE_CORPORA, MODEL, OLLAMA_KEEP_ALIVE, OLLAMA_URL, LOCAL_RUN
-from integrations.integrationsHandler import plan_message, send_message
+from integrations.integrations_handler import plan_message, send_message
 from integrations.schemas import MessagePlan, SendMessageRequest, SendMessageResponse, IntegrationPlanRequest
 from rag.ingest import ingest_corpus
 from rag.retrieve import corpus_has_documents, rag_answer
