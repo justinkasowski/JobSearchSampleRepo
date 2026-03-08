@@ -1,7 +1,9 @@
-﻿from pathlib import Path
+﻿#region imports
+from pathlib import Path
 from typing import Optional
 
 import requests
+import json
 
 import firebase_admin
 from firebase_admin import auth
@@ -20,27 +22,33 @@ from integrations.integrationsHandler import plan_message, send_message
 from integrations.schemas import MessagePlan, SendMessageRequest, SendMessageResponse, IntegrationPlanRequest
 from rag.ingest import ingest_corpus
 from rag.retrieve import corpus_has_documents, rag_answer
+from sql.database import init_db
+from sql.bug_reports import insert_integration_bug_report
+#endregion
 
 QUERY_LIMIT = 100
-runCount=0
 
 db = None
-
 if not LOCAL_RUN:
     firebase_admin.initialize_app()
     db = firestore.Client()
+app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
+
+#region Class definitions
+class IngestRequest(BaseModel):
+    corpus: str
+    clean_rebuild: bool = False
 
 class PromptRequest(BaseModel):
     prompt: str
     keep_alive: Optional[str] = None
 
-
 class DirectQueryResponse(BaseModel):
     model: str
     response: str
     prompt: str
-
 
 class QueryRequest(BaseModel):
     corpus: str
@@ -50,27 +58,30 @@ class QueryRequest(BaseModel):
     document_type: Optional[str] = None
     keep_alive: Optional[str] = None
 
-class IngestRequest(BaseModel):
-    corpus: str
-    clean_rebuild: bool = False
+class BugReportRequest(BaseModel):
+    question: Optional[str] = None
+    answer: Optional[str] = None
+    integration_type: Optional[str] = None
+    integration_channel: Optional[str] = None
+    integration_rationale: Optional[str] = None
+    integration_json: Optional[dict] = None
+    rag_json: Optional[dict] = None
+    report_text: Optional[str] = None
 
-app = FastAPI()
-
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-@app.get("/firestore-test")
-def firestore_test():
-    doc = db.collection("test").document("ping")
-    doc.set({"ok": True})
-    return {"status": "ok"}
+#endregion
 
 
+#region Startup
 @app.get("/", response_class=HTMLResponse)
 def home():
     html = Path("static/index.html").read_text()
     html = html.replace("__LOCAL_RUN__", str(LOCAL_RUN).lower())
     return HTMLResponse(html)
 
+@app.on_event("startup")
+def startup():
+    if not LOCAL_RUN:
+        init_db()
 
 @app.post("/warmup")
 def warmup():
@@ -87,6 +98,30 @@ def warmup():
     r.raise_for_status()
     return {"status": "warmed", "model": MODEL}
 
+
+@app.get("/health")
+def health():
+    return {
+        "status": "ok",
+        "model": MODEL,
+        "ollama_url": OLLAMA_URL,
+        "corpora": AVAILABLE_CORPORA,
+    }
+#endregion
+
+
+#region Ingest/Query
+@app.get("/rag/status")
+def rag_status():
+    status = {}
+
+    for corpus in ["hr", "policy", "sales"]:
+        try:
+            status[corpus] = corpus_has_documents(corpus)
+        except Exception:
+            status[corpus] = False
+
+    return {"corpus_status": status}
 
 @app.post("/rag/ingest")
 def rag_ingest(req: IngestRequest):
@@ -109,7 +144,6 @@ def rag_ingest(req: IngestRequest):
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 
 @app.post("/directQuery", response_model=DirectQueryResponse)
@@ -196,8 +230,10 @@ def rag_query(req: QueryRequest, authorization: Optional[str] = Header(None)):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+#endregion
 
 
+#region Integrations
 @app.post("/integrations/plan")
 def integrations_plan(req: IntegrationPlanRequest):
     try:
@@ -221,27 +257,33 @@ def integrations_send(req: SendMessageRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/rag/status")
-def rag_status():
-    status = {}
 
-    for corpus in ["hr", "policy", "sales"]:
-        try:
-            status[corpus] = corpus_has_documents(corpus)
-        except Exception:
-            status[corpus] = False
+@app.post("/bugs/report")
+def report_bug(req: BugReportRequest, authorization: Optional[str] = Header(None)):
+    try:
+        uid = None
+        if not LOCAL_RUN:
+            uid = get_uid_from_auth_header(authorization)
 
-    return {"corpus_status": status}
+        insert_integration_bug_report({
+            "user_uid": uid,
+            "question": req.question,
+            "answer": req.answer,
+            "integration_type": req.integration_type,
+            "integration_channel": req.integration_channel,
+            "integration_rationale": req.integration_rationale,
+            "integration_json": json.dumps(req.integration_json or {}),
+            "rag_json": json.dumps(req.rag_json or {}),
+            "report_text": req.report_text,
+        })
 
-@app.get("/health")
-def health():
-    return {
-        "status": "ok",
-        "model": MODEL,
-        "ollama_url": OLLAMA_URL,
-        "corpora": AVAILABLE_CORPORA,
-    }
+        return {"status": "ok"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+#endregion
 
+
+#region Helper Functions
 def get_uid_from_auth_header(authorization: Optional[str]) -> Optional[str]:
     if LOCAL_RUN:
         return "local-dev-user"
@@ -272,3 +314,5 @@ def increment_user_run_count(uid: str) -> int | None:
     )
     snap = user_ref.get()
     return snap.to_dict().get("run_count", 0)
+#endregion
+

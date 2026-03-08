@@ -9,3 +9,5 @@ langchain-community
 langchain-text-splitters
 firebase-admin
 google-cloud-firestore
+sqlalchemy
+pg8000
