@@ -1,28 +1,47 @@
-﻿from typing import Optional
+﻿from pathlib import Path
+from typing import Optional
 
-import requests
 import os
+import requests
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+import firebase_admin
+from firebase_admin import auth
+from google.cloud import firestore
+from fastapi import FastAPI, Header, HTTPException
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
+
 from pydantic import BaseModel
 
-from config import AVAILABLE_CORPORA, MODEL, OLLAMA_KEEP_ALIVE, OLLAMA_URL
+from config import AVAILABLE_CORPORA, MODEL, OLLAMA_KEEP_ALIVE, OLLAMA_URL, LOCAL_RUN
 from integrations.integrationsHandler import plan_message, send_message
 from integrations.schemas import MessagePlan, SendMessageRequest, SendMessageResponse, IntegrationPlanRequest
 from rag.ingest import ingest_corpus
 from rag.retrieve import corpus_has_documents, rag_answer
 
+QUERY_LIMIT = 100
+
+db = None
+
+if not LOCAL_RUN:
+    firebase_admin.initialize_app()
+    db = firestore.Client()
 app = FastAPI()
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+@app.get("/firestore-test")
+def firestore_test():
+    doc = db.collection("test").document("ping")
+    doc.set({"ok": True})
+    return {"status": "ok"}
 
-@app.get("/")
+
+@app.get("/", response_class=HTMLResponse)
 def home():
-    return FileResponse("static/index.html")
-
+    html = Path("static/index.html").read_text()
+    html = html.replace("__LOCAL_RUN__", str(LOCAL_RUN).lower())
+    return HTMLResponse(html)
 
 class PromptRequest(BaseModel):
     prompt: str
@@ -33,6 +52,7 @@ class DirectQueryResponse(BaseModel):
     model: str
     response: str
     prompt: str
+
 
 
 @app.post("/warmup")

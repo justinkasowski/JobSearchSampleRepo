@@ -17,7 +17,7 @@
               capabilities: [ gpu ]
 
   api:
-    build: ./services/api
+    build: ./
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
@@ -27,8 +27,10 @@
       - ./data:/data
       - ./services/api:/app
     environment:
+      - LOCAL_RUN=true
       - OLLAMA_MODEL=llama3.2:3b
       - OLLAMA_KEEP_ALIVE=30m
+      - OLLAMA_HOST=http://ollama:11434/api/generate
       - EMBED_MODEL_NAME=sentence-transformers/all-MiniLM-L6-v2
 
       - SLACK_WEBHOOK_POLICY=https://hooks.slack.com/services/...
