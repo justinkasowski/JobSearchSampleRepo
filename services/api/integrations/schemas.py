@@ -16,7 +16,7 @@ class MessagePlan(BaseModel):
     integrations: List[Integration] = Field(
         description="Which integrations should receive the message."
     )
-    channel: Channel = Field(
+    channel: Optional[Channel] = Field(
         description="Which configured target channel should receive the message."
     )
     requiresReview: bool = Field(
