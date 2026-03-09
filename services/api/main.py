@@ -19,7 +19,7 @@ from pydantic import BaseModel
 
 from config import AVAILABLE_CORPORA, MODEL, OLLAMA_KEEP_ALIVE, OLLAMA_URL, LOCAL_RUN
 from integrations.integrations_handler import plan_message, send_message
-from integrations.schemas import MessagePlan, SendMessageRequest, SendMessageResponse, IntegrationPlanRequest
+from integrations.schemas import SendMessageRequest, SendMessageResponse, IntegrationPlanRequest
 from rag.ingest import ingest_corpus
 from rag.retrieve import corpus_has_documents, rag_answer
 from sql.database import init_db
@@ -67,7 +67,9 @@ class BugReportRequest(BaseModel):
     integration_json: Optional[dict] = None
     rag_json: Optional[dict] = None
     report_text: Optional[str] = None
-
+    report_type: Optional[str] = None
+    manual_review_appropriate: Optional[bool] = None
+    manual_review_note: Optional[str] = None
 #endregion
 
 
@@ -274,6 +276,9 @@ def report_bug(req: BugReportRequest, authorization: Optional[str] = Header(None
             "integration_json": json.dumps(req.integration_json or {}),
             "rag_json": json.dumps(req.rag_json or {}),
             "report_text": req.report_text,
+            "report_type": req.report_type,
+            "manual_review_appropriate": req.manual_review_appropriate,
+            "manual_review_note": req.manual_review_note,
         })
 
         return {"status": "ok"}
@@ -314,4 +319,3 @@ def increment_user_run_count(uid: str) -> int | None:
     snap = user_ref.get()
     return snap.to_dict().get("run_count", 0)
 #endregion
-
