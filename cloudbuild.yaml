@@ -45,7 +45,7 @@
     - --platform
     - managed
     - --allow-unauthenticated
-    --set-cloudsql-instances
+    - --set-cloudsql-instances
     - project-39663646-855e-4910-834:us-east4:jobsearchsamplereposql
     - --set-env-vars
     - OLLAMA_MODEL=llama3:8b
