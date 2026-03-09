@@ -594,6 +594,10 @@
 //endregion
 
 //region Slack/Discord Integration
+
+let currentIntegrationPlan = null;
+let integrationAlreadySent = false;
+
   function stripGeneratedIntegrationPrompt(text) {
     if (!text) return text;
 
@@ -642,11 +646,18 @@
     const panel = document.getElementById("integrationPanel");
     const statusEl = document.getElementById("integrationStatus");
     const reportBtn = document.getElementById("integrationReportBtn");
+    const sendBtn = document.getElementById("integrationSendBtn");
 
     panel.classList.remove("hidden");
+    sendBtn.classList.remove("manual-ready", "sent");
+    sendBtn.textContent = "Execute Manually";
+    sendBtn.disabled = true;
 
     if (!plan) {
-      statusEl.textContent = "No action detected.";
+      currentIntegrationPlan = null;
+      integrationAlreadySent = false;
+
+      statusEl.textContent = "No manual action needed.";
       statusEl.className = "integration-status";
       reportBtn.textContent = "Report Bug";
 
@@ -656,6 +667,9 @@
       syncIntegrationChannelState();
       return;
     }
+
+    currentIntegrationPlan = structuredClone(plan);
+    integrationAlreadySent = false;
 
     const integrations = Array.isArray(plan.integrations) ? plan.integrations : ["none"];
     const primaryIntegration = integrations.find(x => x !== "none") || "none";
@@ -667,15 +681,14 @@
     if (primaryIntegration === "none") {
       statusEl.textContent = "No action detected.";
       statusEl.className = "integration-status";
-      reportBtn.textContent = "Report Bug";
     } else if (plan.requiresReview) {
-      statusEl.textContent = "Requires Manual Review";
+      statusEl.textContent = "Manual review required.";
       statusEl.className = "integration-status review";
-      reportBtn.textContent = "Execute Manually and Report";
+      sendBtn.disabled = false;
+      sendBtn.classList.add("manual-ready");
     } else {
-      statusEl.textContent = "Action Complete";
+      statusEl.textContent = "No manual review needed.";
       statusEl.className = "integration-status success";
-      reportBtn.textContent = "Report Bug";
     }
 
     syncIntegrationChannelState();
@@ -788,7 +801,8 @@
         integration_rationale: integrationRationale,
         integration_json: integrationJson,
         rag_json: ragJson,
-        report_text: reportText
+        report_text: reportText,
+        report_type: "bug"
       })
     });
 
@@ -800,6 +814,178 @@
     }
 
     alert("Bug report submitted.");
+  }
+
+  async function submitManualReviewReport({ appropriate, note }) {
+    const question = document.getElementById("question")?.value || "";
+    const answer = document.getElementById("answerResult")?.textContent || "";
+    const integrationType = document.getElementById("integrationTypeSelect")?.value || "";
+    const integrationChannel = document.getElementById("integrationChannelSelect")?.value || "";
+    const integrationRationale = document.getElementById("integrationRationale")?.value || "";
+
+    let integrationJson = {};
+    let ragJson = {};
+
+    try {
+      const integrationRaw = document.getElementById("integrationJsonResult")?.textContent || "{}";
+      integrationJson = integrationRaw.trim() ? JSON.parse(integrationRaw) : {};
+    } catch {
+      integrationJson = { raw: document.getElementById("integrationJsonResult")?.textContent || "" };
+    }
+
+    try {
+      const ragRaw = document.getElementById("answerJsonResult")?.textContent || "{}";
+      ragJson = ragRaw.trim() ? JSON.parse(ragRaw) : {};
+    } catch {
+      ragJson = { raw: document.getElementById("answerJsonResult")?.textContent || "" };
+    }
+
+    const response = await fetch("/bugs/report", {
+      method: "POST",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({
+        question,
+        answer,
+        integration_type: integrationType,
+        integration_channel: integrationChannel,
+        integration_rationale: integrationRationale,
+        integration_json: integrationJson,
+        rag_json: ragJson,
+        report_text: note || "",
+        report_type: "manual_review",
+        manual_review_appropriate: appropriate,
+        manual_review_note: note || ""
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.detail || "Failed to submit manual review report.");
+    }
+
+    return data;
+  }
+
+  let pendingManualReviewResolve = null;
+  function openManualReviewModal() {
+    const modal = document.getElementById("manualReviewModal");
+    const noteInput = document.getElementById("manualReviewNote");
+    const checked = document.querySelector('input[name="manualReviewAppropriate"]:checked');
+
+    if (checked) {
+      checked.checked = false;
+    }
+
+    noteInput.value = "";
+    modal.classList.remove("hidden");
+  }
+
+  function closeManualReviewModal() {
+    const modal = document.getElementById("manualReviewModal");
+    modal.classList.add("hidden");
+
+    if (pendingManualReviewResolve) {
+      pendingManualReviewResolve(null);
+      pendingManualReviewResolve = null;
+    }
+  }
+
+  function submitManualReviewModal() {
+    const selected = document.querySelector('input[name="manualReviewAppropriate"]:checked');
+    const note = document.getElementById("manualReviewNote").value.trim();
+
+    if (!selected) {
+      alert("Select Yes or No.");
+      return;
+    }
+
+    const appropriate = selected.value === "yes";
+
+    document.getElementById("manualReviewModal").classList.add("hidden");
+
+    if (pendingManualReviewResolve) {
+      pendingManualReviewResolve({ appropriate, note });
+      pendingManualReviewResolve = null;
+    }
+  }
+
+  function promptManualReviewFeedback() {
+    return new Promise((resolve) => {
+      pendingManualReviewResolve = resolve;
+      openManualReviewModal();
+    });
+  }
+
+  async function executeManualIntegration() {
+    const button = document.getElementById("integrationSendBtn");
+    const statusEl = document.getElementById("integrationStatus");
+
+    if (!currentIntegrationPlan) {
+      alert("No integration plan available.");
+      return;
+    }
+
+    if (integrationAlreadySent) {
+      alert("This plan was already executed.");
+      return;
+    }
+
+    const selectedIntegration = document.getElementById("integrationTypeSelect").value;
+    const selectedChannel = document.getElementById("integrationChannelSelect").value;
+    const answerText = document.getElementById("answerResult")?.textContent?.trim() || "";
+
+    if (button.disabled) {
+      return;
+    }
+
+    if (!answerText || answerText === "No query run yet." || answerText === "Running query...") {
+      alert("No answer available to send.");
+      return;
+    }
+
+    if (selectedIntegration === "none" || selectedChannel === "none") {
+      alert("Select a valid integration and channel.");
+      return;
+    }
+
+    const planToSend = {
+      ...currentIntegrationPlan,
+      integrations: [selectedIntegration],
+      channel: selectedChannel,
+      requiresReview: false
+    };
+
+    button.disabled = true;
+    statusEl.textContent = "Executing manual send...";
+
+    try {
+      const sendResult = await runIntegrationSend(planToSend, answerText);
+
+      integrationAlreadySent = true;
+      currentIntegrationPlan = structuredClone(planToSend);
+
+      setIntegrationJson({
+        plan: planToSend,
+        send_result: sendResult
+      });
+
+      statusEl.textContent = "Manual send complete.";
+      statusEl.className = "integration-status success";
+
+      const feedback = await promptManualReviewFeedback();
+      if (feedback) {
+        await submitManualReviewReport(feedback);
+      }
+
+      button.textContent = "Executed";
+    } catch (err) {
+      button.disabled = false;
+      statusEl.textContent = "Manual send failed.";
+      statusEl.className = "integration-status review";
+      setIntegrationJson({ error: String(err) });
+      alert("Manual execution failed: " + err);
+    }
   }
 
 //endregion
@@ -859,4 +1045,7 @@
   window.generateQuestion = generateQuestion;
   window.runQuery = runQuery;
   window.reportIntegrationBug = reportIntegrationBug;
+  window.executeManualIntegration = executeManualIntegration;
+  window.closeManualReviewModal = closeManualReviewModal;
+  window.submitManualReviewModal = submitManualReviewModal;
 //endregion

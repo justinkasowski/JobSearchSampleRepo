@@ -14,7 +14,10 @@ def insert_integration_bug_report(payload):
                 integration_rationale,
                 integration_json,
                 rag_json,
-                report_text
+                report_text,
+                report_type,
+                manual_review_appropriate,
+                manual_review_note
             ) VALUES (
                 :user_uid,
                 :question,
@@ -24,7 +27,10 @@ def insert_integration_bug_report(payload):
                 :integration_rationale,
                 CAST(:integration_json AS JSONB),
                 CAST(:rag_json AS JSONB),
-                :report_text
+                :report_text,
+                :report_type,
+                :manual_review_appropriate,
+                :manual_review_note
             )
             """),
             payload,

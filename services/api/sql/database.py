@@ -30,6 +30,24 @@ def init_db():
             integration_json JSONB,
             rag_json JSONB,
             report_text TEXT,
+            report_type TEXT NOT NULL DEFAULT 'bug',
+            manual_review_appropriate BOOLEAN,
+            manual_review_note TEXT,
             status TEXT NOT NULL DEFAULT 'open'
         );
+        """))
+
+        conn.execute(text("""
+        ALTER TABLE bug_reports
+        ADD COLUMN IF NOT EXISTS report_type TEXT NOT NULL DEFAULT 'bug';
+        """))
+
+        conn.execute(text("""
+        ALTER TABLE bug_reports
+        ADD COLUMN IF NOT EXISTS manual_review_appropriate BOOLEAN;
+        """))
+
+        conn.execute(text("""
+        ALTER TABLE bug_reports
+        ADD COLUMN IF NOT EXISTS manual_review_note TEXT;
         """))

@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 
-from config import AVAILABLE_CORPORA, MODEL, OLLAMA_URL, RAG_PROMPT
+from config import AVAILABLE_CORPORA, MODEL, OLLAMA_URL, RAG_PROMPT, OLLAMA_KEEP_ALIVE, LOCAL_RUN
 
 from .rag_store import get_vector_store
 
@@ -169,14 +169,18 @@ QUESTION:
 {question}
 """
 
+    payload = {
+        "model": MODEL,
+        "prompt": prompt,
+        "stream": False,
+    }
+
+    if LOCAL_RUN:
+        payload["keep_alive"] = keep_alive or OLLAMA_KEEP_ALIVE
+
     r = requests.post(
         OLLAMA_URL,
-        json={
-            "model": MODEL,
-            "prompt": prompt,
-            "stream": False,
-            "keep_alive": keep_alive,
-        },
+        json=payload,
         timeout=300,
     )
     r.raise_for_status()

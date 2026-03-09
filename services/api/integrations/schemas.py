@@ -1,22 +1,26 @@
 ﻿from enum import Enum
-from typing import Optional, List
+from typing import List, Optional
 from pydantic import BaseModel, Field
+
 
 class Integration(str, Enum):
     none = "none"
     slack = "slack"
     discord = "discord"
 
+
 class Channel(str, Enum):
+    none = "none"
     policy = "policy"
     hr = "hr"
     sales = "sales"
+
 
 class MessagePlan(BaseModel):
     integrations: List[Integration] = Field(
         description="Which integrations should receive the message."
     )
-    channel: Optional[Channel] = Field(
+    channel: Channel = Field(
         description="Which configured target channel should receive the message."
     )
     requiresReview: bool = Field(
@@ -28,6 +32,7 @@ class MessagePlan(BaseModel):
         description="Brief explanation of why this integration and channel were selected."
     )
 
+
 class IntegrationPlanRequest(BaseModel):
     instruction: str = Field(
         min_length=1,
@@ -38,12 +43,14 @@ class IntegrationPlanRequest(BaseModel):
         description="Optional Ollama keep_alive override."
     )
 
+
 class SendMessageRequest(BaseModel):
     plan: MessagePlan
     message: str = Field(
         min_length=1,
         description="The already-generated answer text to send."
     )
+
 
 class SendMessageResponse(BaseModel):
     status: str

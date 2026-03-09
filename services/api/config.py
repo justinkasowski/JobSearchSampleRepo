@@ -8,7 +8,7 @@ DB_PASS = os.getenv("DB_PASS", "postgres")
 DB_NAME = os.getenv("DB_NAME", "postgres")
 
 MODEL = os.environ.get("OLLAMA_MODEL", "llama3:8b")
-OLLAMA_KEEP_ALIVE = os.environ.get("OLLAMA_KEEP_ALIVE", "30m")
+OLLAMA_KEEP_ALIVE = os.environ.get("OLLAMA_KEEP_ALIVE", "10m")
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1/api/generate")
 
 EMBED_MODEL_NAME = os.environ.get(
@@ -58,7 +58,8 @@ If the prompt mentions Slack or Discord, but does not specifically say to send i
 The context should only be used to figure out if the integration is slack or discord and if the channel is hr, policy or sales
 If the channel is ambiguous, do your best to figure it out based on the context. 
 For example, if it's a question about a protocols, choose policy. 
-If it is not extremely clear which channel it goes in, set requiresReview to true
+If it is not extremely clear which channel it goes in, set requiresReview to true.
+If there is more than one channel it could be meant for, set requiresReview to be true and write multiple channels in your rationale.
 
 Rules:
 - Return JSON only

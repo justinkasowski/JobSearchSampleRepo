@@ -5,6 +5,11 @@ from pydantic import ValidationError
 from config import MODEL, OLLAMA_KEEP_ALIVE, OLLAMA_URL, INTEGRATIONS_PROMPT
 from integrations.schemas import MessagePlan
 
+
+def get_message_plan_schema() -> Dict[str, Any]:
+    return MessagePlan.model_json_schema()
+
+
 def _call_ollama_json(prompt: str, keep_alive: str | None = None) -> str:
     r = requests.post(
         OLLAMA_URL,
@@ -35,7 +40,7 @@ def _clean_llm_json(raw_text: str) -> str:
     return text
 
 
-def _build_prompt(instruction: str) -> str:
+def build_prompt(instruction: str) -> str:
     return f"""{INTEGRATIONS_PROMPT}
 
 USER QUESTION:
@@ -43,8 +48,8 @@ USER QUESTION:
 """
 
 
-def llm_plan_message(instruction: str, keep_alive: str | None = None) -> tuple[MessagePlan, str]:
-    prompt = _build_prompt(instruction)
+def llm_plan_message(instruction: str, keep_alive: str | None = None) -> tuple[MessagePlan, str, str]:
+    prompt = build_prompt(instruction)
     raw_output = _call_ollama_json(prompt, keep_alive=keep_alive)
     cleaned_output = _clean_llm_json(raw_output)
 
@@ -55,4 +60,4 @@ def llm_plan_message(instruction: str, keep_alive: str | None = None) -> tuple[M
             f"LLM returned invalid MessagePlan JSON.\nRaw output:\n{raw_output}\n\nValidation error:\n{e}"
         )
 
-    return plan, prompt
+    return plan, prompt, raw_output

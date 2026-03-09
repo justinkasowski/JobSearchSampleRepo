@@ -102,7 +102,15 @@
         <div class="section-title">
           <div>
             <h2>Query</h2>
-            <p>Ask the model directly or enable corpus retrieval for grounded answers with citations.</p>
+            <p>
+              This demo shows a Retrieval-Augmented Generation (RAG) workflow built around a local LLM.
+              Questions can be sent directly to the model, or routed through a retrieval step that searches
+              a vector database built from the HR, Policy, and Sales document corpora. The most relevant
+              document chunks are injected into the model prompt so answers are grounded in source material
+              and returned with citations. The system also demonstrates simple automation logic by detecting
+              when responses should be routed to Slack or Discord, with manual review safeguards for
+              ambiguous cases.
+            </p>
           </div>
 
           <div class="corpus-header-right">
@@ -184,7 +192,7 @@
 
                   <div>
                     <label for="keepAlive">Keep Alive</label>
-                    <input id="keepAlive" type="text" placeholder="default 30m">
+                    <input id="keepAlive" type="text" placeholder="default 10m">
                   </div>
 
                   <div class="checkbox-row">
@@ -248,22 +256,28 @@
                 <textarea id="integrationRationale" placeholder="No follow-up action detected. Answer only." readonly></textarea>
               </div>
 
-              <div class="integration-actions-row">
-
+              <div class="integration-side-actions">
                 <div id="integrationStatus" class="integration-status">
                   No action detected.
                 </div>
 
-                <button
-                  id="integrationReportBtn"
-                  type="button"
-                  class="secondary"
-                  onclick="reportIntegrationBug()">
-                  Report Bug
-                </button>
+                <div class="integration-actions-row">
+                  <button
+                    id="integrationSendBtn"
+                    type="button"
+                    onclick="executeManualIntegration()">
+                    Execute Manually
+                  </button>
 
+                  <button
+                    id="integrationReportBtn"
+                    type="button"
+                    class="secondary"
+                    onclick="reportIntegrationBug()">
+                    Report Bug
+                  </button>
+                </div>
               </div>
-
             </div>
           </div>
         </div>
@@ -292,6 +306,42 @@
     </div>
   </div>
 
+  <div id="manualReviewModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-title">Manual Review</div>
+
+      <div class="manual-review-row">
+
+        <div class="manual-review-yn">
+          <div class="manual-review-label">Was the model correct?</div>
+
+          <label class="inline-option">
+            <input type="radio" name="manualReviewAppropriate" value="yes">
+            <span>Yes</span>
+          </label>
+
+          <label class="inline-option">
+            <input type="radio" name="manualReviewAppropriate" value="no">
+            <span>No</span>
+          </label>
+        </div>
+
+        <div class="manual-review-note">
+          <label for="manualReviewNote">Note</label>
+          <input
+            id="manualReviewNote"
+            type="text"
+            placeholder="Optional note">
+        </div>
+
+      </div>
+
+      <div class="manual-review-actions">
+        <button type="button" class="secondary" onclick="closeManualReviewModal()">Cancel</button>
+        <button type="button" onclick="submitManualReviewModal()">Submit</button>
+      </div>
+    </div>
+  </div>
   <script>
   window.LOCAL_RUN = __LOCAL_RUN__;
   </script>
