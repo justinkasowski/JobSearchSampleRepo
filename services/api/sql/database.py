@@ -2,9 +2,8 @@
 from sqlalchemy import create_engine
 from sqlalchemy import text
 
-from config import LOCAL_RUN, DB_USER, DB_PASS, DB_NAME
+from config import LOCAL_RUN, DB_USER, DB_PASS, DB_NAME, INSTANCE_CONNECTION_NAME
 
-INSTANCE_CONNECTION_NAME = os.getenv("INSTANCE_CONNECTION_NAME")
 
 engine = create_engine(
     (

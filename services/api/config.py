@@ -6,6 +6,7 @@ LOCAL_RUN = os.environ.get("LOCAL_RUN", "false").lower() == "true"
 DB_USER = os.getenv("DB_USER", "postgres")
 DB_PASS = os.getenv("DB_PASS", "postgres")
 DB_NAME = os.getenv("DB_NAME", "postgres")
+INSTANCE_CONNECTION_NAME = os.getenv("INSTANCE_CONNECTION_NAME")
 
 MODEL = os.environ.get("OLLAMA_MODEL", "llama3:8b")
 OLLAMA_KEEP_ALIVE = os.environ.get("OLLAMA_KEEP_ALIVE", "10m")
