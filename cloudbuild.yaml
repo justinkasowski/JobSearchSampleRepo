@@ -45,6 +45,10 @@
     - --platform
     - managed
     - --allow-unauthenticated
+    --set-cloudsql-instances
+    - project-39663646-855e-4910-834:us-east4:jobsearchsamplereposql
+    - --set-env-vars
+    - OLLAMA_MODEL=llama3:8b
 
 images:
 - us-east4-docker.pkg.dev/$PROJECT_ID/jobsearchsamplerepo/rag-demo:$COMMIT_SHA
