@@ -90,18 +90,26 @@ def startup():
 
 @app.post("/warmup")
 def warmup():
-    r = requests.post(
-        OLLAMA_URL,
-        json={
-            "model": MODEL,
-            "prompt": "",
-            "stream": False,
-            "keep_alive": OLLAMA_KEEP_ALIVE,
-        },
-        timeout=300,
-    )
-    r.raise_for_status()
-    return {"status": "warmed", "model": MODEL}
+    @app.post("/warmup")
+    def warmup():
+        try:
+            #Note, warmup may fail during coldstart after model change since a cached model won't be available
+            r = requests.post(
+                OLLAMA_URL,
+                json={
+                    "model": MODEL,
+                    "prompt": "",
+                    "stream": False,
+                    "keep_alive": OLLAMA_KEEP_ALIVE,
+                },
+                timeout=300,
+            )
+            r.raise_for_status()
+            return {"status": "warmed", "model": MODEL}
+        except Exception:
+            return {"status": "skipped"}
+
+
 
 
 @app.get("/health")
