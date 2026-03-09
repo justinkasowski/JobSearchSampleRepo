@@ -83,6 +83,7 @@ def home():
     html = html.replace("__LOCAL_RUN__", str(LOCAL_RUN).lower())
     return HTMLResponse(html)
 
+
 @app.on_event("startup")
 def startup():
     if not LOCAL_RUN:
@@ -91,32 +92,70 @@ def startup():
         except Exception as e:
             print(f"Database init failed: {e}")
 
+
+def check_ollama(model: str, keep_alive: str | None = None) -> dict:
+    try:
+        r = requests.post(
+            OLLAMA_URL,
+            json={
+                "model": model,
+                "prompt": "",
+                "stream": False,
+                "keep_alive": keep_alive or OLLAMA_KEEP_ALIVE,
+            },
+            timeout=300,
+        )
+        r.raise_for_status()
+        data = r.json()
+
+        return {
+            "ok": True,
+            "model": model,
+            "ollama_url": OLLAMA_URL,
+            "response_preview": (data.get("response", "") or "").strip()[:80],
+        }
+    except Exception as e:
+        return {
+            "ok": False,
+            "model": model,
+            "ollama_url": OLLAMA_URL,
+            "error": str(e),
+        }
+
+
 @app.post("/warmup")
 def warmup():
-    @app.post("/warmup")
-    def warmup():
-        try:
-            #Note, warmup may fail during coldstart after model change since a cached model won't be available
-            r = requests.post(
-                OLLAMA_URL,
-                json={
-                    "model": MODEL,
-                    "prompt": "",
-                    "stream": False,
-                    "keep_alive": OLLAMA_KEEP_ALIVE,
-                },
-                timeout=300,
-            )
-            r.raise_for_status()
-            return {"status": "warmed", "model": MODEL}
-        except Exception:
-            return {"status": "skipped"}
+    result = check_ollama(MODEL, OLLAMA_KEEP_ALIVE)
 
+    if not result["ok"]:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Ollama warmup failed: {result['error']}"
+        )
 
+    return {
+        "status": "warmed",
+        "model": MODEL,
+        "ollama_url": OLLAMA_URL,
+    }
 
 
 @app.get("/health")
 def health():
+    result = check_ollama(MODEL, OLLAMA_KEEP_ALIVE)
+
+    if not result["ok"]:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "status": "error",
+                "model": MODEL,
+                "ollama_url": OLLAMA_URL,
+                "corpora": AVAILABLE_CORPORA,
+                "error": result["error"],
+            },
+        )
+
     return {
         "status": "ok",
         "model": MODEL,

@@ -124,11 +124,12 @@
       }
 
       if (!response.ok || data.status !== "ok") {
-        lastHealthCheckText = `Last check: ${formatHealthTimestamp()}`;
-        renderWarmupDetail();
-        alert("The service does not appear healthy right now. Restart the demo and try again.");
-        return;
-      }
+          lastHealthCheckText = `Last check: ${formatHealthTimestamp()}`;
+          renderWarmupDetail();
+          const errorText = data?.detail?.error || data?.error || "Unknown health failure.";
+          alert(`The service is unhealthy: ${errorText}`);
+          return;
+        }
 
       lastHealthCheckText = `Last check: ${formatHealthTimestamp()}`;
       renderWarmupDetail();
@@ -1011,7 +1012,7 @@ let integrationAlreadySent = false;
     } catch (e) {
       console.error(e);
     }
-    setInterval(runSilentHealthCheck, 60000);
+    setInterval(runSilentHealthCheck, 900000);
 
     syncIntegrationPanelVisibility();
     syncIntegrationChannelState();
