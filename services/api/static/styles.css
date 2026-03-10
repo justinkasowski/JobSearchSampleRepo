@@ -914,6 +914,12 @@ pre.raw-box {
     padding: 8px 8px;
   }
 
+   .ingest-action-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
   .query-answer-grid {
     grid-template-columns: minmax(270px, 0.95fr) minmax(280px, 1.35fr);
   }
@@ -1008,7 +1014,6 @@ pre.raw-box {
     width: 100%;
     margin-top: 16px;
   }
-
 
   .hero-center {
     left: 56px !important;
