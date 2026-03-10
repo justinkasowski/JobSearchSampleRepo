@@ -1,21 +1,25 @@
-﻿import os
-from sqlalchemy import create_engine
-from sqlalchemy import text
+﻿from sqlalchemy import create_engine, text
 
-from config import LOCAL_RUN, DB_USER, DB_PASS, DB_NAME, INSTANCE_CONNECTION_NAME
+from config import LOCAL_RUN, DB_USER, DB_PASS, DB_NAME, INSTANCE_CONNECTION_NAME, DB_HOST, DB_PORT
 
-
-engine = create_engine(
-    (
+if LOCAL_RUN:
+    DATABASE_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+else:
+    DATABASE_URL = (
         f"postgresql+pg8000://{DB_USER}:{DB_PASS}@/{DB_NAME}"
         f"?unix_sock=/cloudsql/{INSTANCE_CONNECTION_NAME}/.s.PGSQL.5432"
     )
-    if not LOCAL_RUN
-    else f"postgresql+pg8000://{DB_USER}:{DB_PASS}@host.docker.internal:5432/{DB_NAME}"
-)
+
+print(f"DATABASE_URL={DATABASE_URL}")
+print(f"Connecting to postgres at {DB_HOST}:{DB_PORT} db={DB_NAME} local_run={LOCAL_RUN}")
+
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
 def init_db():
     with engine.begin() as conn:
+        print(conn.execute(text("select current_database()")).scalar())
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+
         conn.execute(text("""
         CREATE TABLE IF NOT EXISTS bug_reports (
             id BIGSERIAL PRIMARY KEY,

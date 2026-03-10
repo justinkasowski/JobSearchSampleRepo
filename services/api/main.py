@@ -1,31 +1,27 @@
 ﻿#region imports
+import json
 from pathlib import Path
 from typing import Optional
 
-import requests
-import json
-import os
-
 import firebase_admin
-from firebase_admin import auth
-from google.cloud import firestore
-from google.cloud.firestore_v1 import Increment
-
+import requests
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-
+from firebase_admin import auth
+from google.cloud import firestore
+from google.cloud.firestore_v1 import Increment
 from pydantic import BaseModel
 
-
-from config import AVAILABLE_CORPORA, MODEL, OLLAMA_KEEP_ALIVE, OLLAMA_URL, LOCAL_RUN
+from config import AVAILABLE_CORPORA, MODEL, OLLAMA_KEEP_ALIVE, OLLAMA_URL, LOCAL_RUN, DB_USER, DB_NAME, DB_HOST, \
+    DB_PORT
 from integrations.integrations_handler import plan_message, send_message
-from integrations.schemas import SendMessageRequest, SendMessageResponse, IntegrationPlanRequest, MessagePlan, \
-    Integration, Channel
+from integrations.schemas import SendMessageRequest, SendMessageResponse, IntegrationPlanRequest, MessagePlan
 from rag.ingest import ingest_corpus
 from rag.retrieve import corpus_has_documents, rag_answer
-from sql.database import init_db
 from sql.bug_reports import insert_integration_bug_report
+from sql.database import init_db
+
 #endregion
 
 QUERY_LIMIT = 100
@@ -84,6 +80,11 @@ def startup():
     # if not LOCAL_RUN:
         try:
             print("init_db")
+            print(f"LOCAL_RUN={LOCAL_RUN}")
+            print(f"DB_USER={DB_USER}")
+            print(f"DB_NAME={DB_NAME}")
+            print(f"DB_HOST={DB_HOST}")
+            print(f"DB_PORT={DB_PORT}")
             init_db()
             print("success")
         except Exception as e:

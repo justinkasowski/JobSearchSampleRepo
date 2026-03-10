@@ -8,6 +8,16 @@ DB_PASS = os.getenv("DB_PASS", "postgres")
 DB_NAME = os.getenv("DB_NAME", "postgres")
 INSTANCE_CONNECTION_NAME = os.getenv("INSTANCE_CONNECTION_NAME")
 
+DB_HOST = os.getenv("DB_HOST", "host.docker.internal")
+DB_PORT = os.getenv("DB_PORT", "5432")
+
+VECTOR_BACKEND = os.getenv("VECTOR_BACKEND", "chroma" if LOCAL_RUN else "pgvector").lower()
+
+PGVECTOR_CONNECTION_STRING = os.getenv(
+    "PGVECTOR_CONNECTION_STRING",
+    f"postgresql+psycopg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+)
+
 SLACK_WEBHOOKS = {
     "policy": os.environ.get("SLACK_WEBHOOK_POLICY", ""),
     "hr": os.environ.get("SLACK_WEBHOOK_HR", ""),

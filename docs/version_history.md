@@ -93,6 +93,17 @@ Planned changes:
 
 *Timeline:* 1-2 days
 
+### Version 1.4 - Agentic workflow
+
+**Goal:** Multi step integration pipeline
+
+Planned changes:  
+- Provide interface to chain integration commands
+  - e.g. first integration call to determine integration pipeline
+  - Automatic call to outcome integration using schema-constrained return
+
+*Timeline:* 1-2 days
+
 ---
 
 ## Version 2.0 – Scalable Cloud Structure

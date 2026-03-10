@@ -4,7 +4,6 @@ from typing import Any, Dict, List, Optional, Tuple
 import requests
 
 from config import AVAILABLE_CORPORA, MODEL, OLLAMA_URL, RAG_PROMPT, OLLAMA_KEEP_ALIVE, LOCAL_RUN
-
 from .rag_store import get_vector_store
 
 
@@ -16,9 +15,8 @@ def corpus_has_documents(corpus: str) -> bool:
 
     vs = get_vector_store(corpus)
     try:
-        data = vs.get(limit=1)
-        ids = data.get("ids", []) if data else []
-        return len(ids) > 0
+        docs = vs.similarity_search("test", k=1)
+        return len(docs) > 0
     except Exception:
         return False
 
@@ -26,29 +24,31 @@ def corpus_has_documents(corpus: str) -> bool:
 def _normalize_filter(value: Optional[str]) -> Optional[str]:
     if value is None:
         return None
-
     value = value.strip().lower()
     if not value or value == "all":
         return None
-
     return value
 
 
-def _metadata_match(doc: Any, section: Optional[str], document_type: Optional[str]) -> bool:
-    meta = doc.metadata or {}
+def _build_filter(section: Optional[str], document_type: Optional[str]) -> Optional[dict]:
+    clauses = []
 
     wanted_section = _normalize_filter(section)
     wanted_doc_type = _normalize_filter(document_type)
 
     if wanted_section is not None:
-        if str(meta.get("section", "")).strip().lower() != wanted_section:
-            return False
+        clauses.append({"section": {"$eq": wanted_section}})
 
     if wanted_doc_type is not None:
-        if str(meta.get("document_type", "")).strip().lower() != wanted_doc_type:
-            return False
+        clauses.append({"document_type": {"$eq": wanted_doc_type}})
 
-    return True
+    if not clauses:
+        return None
+
+    if len(clauses) == 1:
+        return clauses[0]
+
+    return {"$and": clauses}
 
 
 def _format_context(docs: List[Any]) -> str:
@@ -73,35 +73,31 @@ def _format_context(docs: List[Any]) -> str:
 
 
 def _citations(docs: List[Any]) -> List[Dict[str, Any]]:
-    citations: List[Dict[str, Any]] = []
-
+    citations = []
     for i, doc in enumerate(docs, start=1):
         meta = doc.metadata or {}
         snippet = (doc.page_content or "").strip()
-
-        citations.append(
-            {
-                "source": i,
-                "doc_id": meta.get("doc_id"),
-                "corpus": meta.get("corpus"),
-                "section": meta.get("section"),
-                "document_type": meta.get("document_type"),
-                "page": meta.get("page"),
-                "source_path": meta.get("source_path"),
-                "snippet": snippet[:700],
-            }
-        )
-
+        citations.append({
+            "source": i,
+            "doc_id": meta.get("doc_id"),
+            "corpus": meta.get("corpus"),
+            "section": meta.get("section"),
+            "document_type": meta.get("document_type"),
+            "page": meta.get("page"),
+            "source_path": meta.get("source_path"),
+            "snippet": snippet[:700],
+        })
     return citations
 
-def _search_single_corpus(corpus: str, question: str, candidate_k: int) -> List[Tuple[Any, float]]:
+
+def _search_single_corpus(corpus: str, question: str, candidate_k: int, search_filter: Optional[dict]) -> List[Tuple[Any, float]]:
     vs = get_vector_store(corpus)
 
     try:
-        results = vs.similarity_search_with_relevance_scores(question, k=candidate_k)
+        results = vs.similarity_search_with_score(question, k=candidate_k, filter=search_filter)
         return results
     except Exception:
-        docs = vs.similarity_search(question, k=candidate_k)
+        docs = vs.similarity_search(question, k=candidate_k, filter=search_filter)
         return [(doc, 0.0) for doc in docs]
 
 
@@ -113,32 +109,19 @@ def _retrieve_docs(
     document_type: Optional[str],
 ) -> List[Any]:
     candidate_k = max(k * 3, 10)
-    section = _normalize_filter(section)
-    document_type = _normalize_filter(document_type)
+    search_filter = _build_filter(section, document_type)
 
     if corpus == "all":
-        pooled: List[Tuple[Any, float]] = []
-
+        pooled = []
         for corpus_name in AVAILABLE_CORPORA:
-            pooled.extend(_search_single_corpus(corpus_name, question, candidate_k))
+            pooled.extend(_search_single_corpus(corpus_name, question, candidate_k, search_filter))
 
-        filtered = [
-            (doc, score)
-            for doc, score in pooled
-            if _metadata_match(doc, section, document_type)
-        ]
+        pooled.sort(key=lambda x: x[1])
+        return [doc for doc, _score in pooled[:k]]
 
-        filtered.sort(key=lambda x: x[1], reverse=True)
-        return [doc for doc, _score in filtered[:k]]
-
-    results = _search_single_corpus(corpus, question, candidate_k)
-    filtered = [
-        (doc, score)
-        for doc, score in results
-        if _metadata_match(doc, section, document_type)
-    ]
-    filtered.sort(key=lambda x: x[1], reverse=True)
-    return [doc for doc, _score in filtered[:k]]
+    results = _search_single_corpus(corpus, question, candidate_k, search_filter)
+    results.sort(key=lambda x: x[1])
+    return [doc for doc, _score in results[:k]]
 
 
 def rag_answer(
@@ -151,13 +134,7 @@ def rag_answer(
     include_prompt: bool = True,
 ) -> Dict[str, Any]:
     corpus = corpus.strip().lower()
-    docs = _retrieve_docs(
-        corpus=corpus,
-        question=question,
-        k=k,
-        section=section,
-        document_type=document_type,
-    )
+    docs = _retrieve_docs(corpus, question, k, section, document_type)
 
     context = _format_context(docs)
 
@@ -188,23 +165,18 @@ QUESTION:
     data = r.json()
 
     answer = data.get("response", "").strip()
-
-    # convert [Source X] -> [X]
     answer = re.sub(r"\[Source\s*(\d+)\]", r"[\1]", answer)
 
-    # find which citations are used
     used_sources = sorted(set(int(x) for x in re.findall(r"\[(\d+)\]", answer)))
 
     refs = []
     for i in used_sources:
         if 1 <= i <= len(docs):
             meta = docs[i - 1].metadata or {}
-            doc_id = meta.get("doc_id", "unknown")
-            page = meta.get("page", "unknown")
-            refs.append(f"{i}: {doc_id}, page {page}")
+            refs.append(f"{i}: {meta.get('doc_id', 'unknown')}, page {meta.get('page', 'unknown')}")
 
     if refs:
-        answer = answer + "\n\n" + "\n".join(refs)
+        answer += "\n\n" + "\n".join(refs)
 
     return {
         "corpus": corpus,

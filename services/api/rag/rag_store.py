@@ -4,10 +4,11 @@ from typing import Optional
 
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
+from langchain_postgres import PGVector
 
-# Persist Chroma DB inside the container
+from config import VECTOR_BACKEND, PGVECTOR_CONNECTION_STRING, EMBED_MODEL_NAME
+
 CHROMA_BASE_DIR = Path(os.getenv("CHROMA_BASE_DIR", "/data/chroma"))
-EMBED_MODEL_NAME = os.getenv("EMBED_MODEL_NAME", "sentence-transformers/all-MiniLM-L6-v2")
 
 _embeddings_singleton: Optional[HuggingFaceEmbeddings] = None
 
@@ -19,11 +20,17 @@ def get_embeddings() -> HuggingFaceEmbeddings:
     return _embeddings_singleton
 
 
-def get_vector_store(corpus: str) -> Chroma:
-    """
-    One Chroma collection per corpus. Persisted to disk so ingest doesn't need to run every time.
-    """
+def get_vector_store(corpus: str):
     corpus = corpus.strip().lower()
+
+    if VECTOR_BACKEND == "pgvector":
+        return PGVector(
+            embeddings=get_embeddings(),
+            collection_name=f"{corpus}_docs",
+            connection=PGVECTOR_CONNECTION_STRING,
+            use_jsonb=True,
+        )
+
     persist_dir = CHROMA_BASE_DIR / corpus
     persist_dir.mkdir(parents=True, exist_ok=True)
 
