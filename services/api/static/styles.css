@@ -89,6 +89,11 @@ body {
   z-index: 1;
 }
 
+@media (max-width: 760px) {
+  .hero-content {
+    text-align: left;
+  }
+}
 .hero-content {
   min-width: 0;
 }
@@ -143,6 +148,11 @@ body {
   opacity: 1;
 }
 
+@media (max-width: 760px) {
+  .integration-text {
+    display: none;
+  }
+}
 .integration-text {
   font-size: 0.78rem;
   color: var(--muted);
@@ -865,7 +875,7 @@ pre.raw-box {
   }
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1100px) {
   body {
     padding: 10px 8px 24px;
   }
@@ -912,6 +922,9 @@ pre.raw-box {
     grid-template-columns: minmax(270px, 0.95fr) minmax(280px, 1.35fr);
   }
 
+.query-top select {
+  width: 100%;
+}
   .query-top {
     grid-template-columns: minmax(90px, 140px) minmax(120px, 1fr) minmax(120px, 1fr);
   }
@@ -925,9 +938,39 @@ pre.raw-box {
   }
 
   .corpus-header-right {
-    width: 45%;
-    min-width: 420px;
-    flex: 0 0 45%;
+    width: 100% !important;
+    min-width: 0 !important;
+    flex: none !important;
+  }
+
+ .section-title {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .title-block {
+    width: 100% !important;
+    margin-bottom: 16px;
+  }
+
+ .query-answer-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .subcard,
+  .answer-box {
+    width: 100% !important;
+  }
+
+    .query-top {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+  .query-bottom-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px;
   }
 
   .ingest-inline-grid {
@@ -951,39 +994,71 @@ pre.raw-box {
   }
 }
 
-@media (max-width: 760px) {
-  .hero-center {
-    width: min(100%, 380px);
-    padding: 0 14px;
+@media (max-width: 700px) {
+  .integration-text {
+    display: none !important;
   }
 
-  .hero h1 {
-    font-size: clamp(0.82rem, 1.65vw, 1.05rem);
+  .integrations-card {
+    left: 12px;
+    gap: 0;
+  }
+
+  .ingest-panel {
+    width: 100%;
+    margin-top: 16px;
+  }
+
+
+  .hero-center {
+    left: 56px !important;
+    top: 50%;
+    transform: translateY(-50%) !important;
+    width: auto !important;
+    padding: 0 !important;
+    text-align: left !important;
+  }
+
+  .hero-content {
+    text-align: left !important;
+  }
+
+  .hero-content h1 {
+    font-size: 0;
+  }
+
+  .hero-content h1::after {
+    content: "Rag Demo";
+    font-size: 16px;
   }
 
   .hero-subtitle {
-    font-size: 0.62rem;
+      display: none !important;
+    }
+
+  .hero h1,
+  .hero-subtitle {
+    text-align: left !important;
   }
 
-  .status-card-inline button {
-    font-size: 0.62rem;
-    padding: 7px 6px;
+
+  .generate-btn,
+  .run-btn {
+    font-size: 0;
   }
 
-  .card,
-  .subcard {
-    border-radius: 14px;
+    .generate-btn::after {
+    content: "Generate";
+    font-size: 14px;
   }
 
-  .query-run-row {
-    grid-template-columns: 1fr;
+  .run-btn::after {
+    content: "Run";
+    font-size: 14px;
   }
 
-  .integration-left-controls {
-    grid-template-columns: 1fr;
+  .citation-pane {
+    width: 100%;
   }
 
-  .integration-actions-row {
-    grid-template-columns: 1fr;
-  }
 }
