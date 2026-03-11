@@ -1,6 +1,6 @@
 ﻿# RAG LLM System
 
-[ Click here to run the deployed model ](https://rag-demo.justinkasowski.com)
+[ Click here to run the deployed model ](https://rag-demo.justinkasowski.com) Note* The deployed version points at a private repo and will be a continuation past v0.99
 
 This repository contains a Retrieval-Augmented Generation (RAG) LLM service designed to ingest corpora of documents and answer questions with cited sources. The system can optionally trigger integrations such as Slack or Discord notifications when follow-up actions are detected.
 
