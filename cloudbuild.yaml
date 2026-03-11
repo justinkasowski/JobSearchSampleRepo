@@ -40,6 +40,8 @@
       - jobsearchsamplerepo
       - --image
       - us-east4-docker.pkg.dev/$PROJECT_ID/jobsearchsamplerepo/rag-demo:$COMMIT_SHA
+      - --min-instances=0
+      - --max-instances=3
       - --region
       - us-east4
       - --platform
